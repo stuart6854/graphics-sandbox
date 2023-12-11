@@ -538,3 +538,5 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
+# RenderDoc settings
+*.cap
