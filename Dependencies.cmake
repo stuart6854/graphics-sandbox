@@ -32,3 +32,29 @@ CPMAddPackage(
         OPTIONS
         "VKMANA_BUILD_SAMPLES OFF"
 )
+
+CPMAddPackage(
+        NAME assimp
+        GITHUB_REPOSITORY assimp/assimp
+        GIT_TAG v5.3.1
+        SYSTEM ON
+        OPTIONS
+        "ASSIMP_BUILD_TESTS OFF"
+        "ASSIMP_INSTALL OFF"
+        "ASSIMP_NO_EXPORT ON"
+        "ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT OFF"
+        "ASSIMP_BUILD_OBJ_IMPORTER ON"
+        "ASSIMP_BUILD_FBX_IMPORTER ON"
+        "ASSIMP_BUILD_GLTF_IMPORTER ON"
+)
+
+CPMAddPackage(
+        NAME stb
+        GITHUB_REPOSITORY nothings/stb
+        GIT_TAG master
+        DOWNLOAD_ONLY True
+)
+if (stb_ADDED)
+    add_library(stb INTERFACE)
+    target_include_directories(stb SYSTEM INTERFACE ${stb_SOURCE_DIR})
+endif ()

@@ -21,4 +21,4 @@ set_target_properties(${APP_TARGET}
         CXX_EXTENSIONS Off
 )
 
-target_link_libraries(${APP_TARGET} PRIVATE fmt glm glfw VkMana)
+target_link_libraries(${APP_TARGET} PRIVATE fmt glm glfw VkMana assimp stb)
