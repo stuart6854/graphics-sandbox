@@ -7,7 +7,17 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
-constexpr auto MESH_IMPORT_FLAGS = aiProcessPreset_TargetRealtime_Quality | aiProcess_FlipUVs;
+#include <glm/gtc/type_ptr.hpp>
+
+constexpr auto MESH_IMPORT_FLAGS = aiProcessPreset_TargetRealtime_Quality;
+
+namespace
+{
+	inline glm::mat4 mat4_cast(const aiMatrix4x4& m)
+	{
+		return glm::transpose(glm::make_mat4(&m.a1));
+	}
+} // namespace
 
 Mesh::Mesh(VkMana::Context& ctx) : m_ctx(&ctx) {}
 
@@ -30,7 +40,7 @@ bool Mesh::LoadFromFile(const std::filesystem::path& filename)
 	std::vector<Submesh> submeshes;
 	std::vector<Material> materials;
 
-	ProcessNode(scene->mRootNode, scene, vertices, indices, submeshes);
+	ProcessNode(scene->mRootNode, scene, glm::mat4(1.0f), vertices, indices, submeshes);
 
 	for (auto i = 0; i < scene->mNumMaterials; ++i)
 	{
@@ -73,22 +83,30 @@ void Mesh::SetMaterials(const std::vector<Material>& materials)
 	m_materials = materials;
 }
 
-void Mesh::ProcessNode(
-	const aiNode* node, const aiScene* scene, std::vector<Vertex>& outVertices, std::vector<uint16_t>& outIndices, std::vector<Submesh>& outSubmeshes)
+void Mesh::ProcessNode(const aiNode* node,
+	const aiScene* scene,
+	const glm::mat4& parentTransform,
+	std::vector<Vertex>& outVertices,
+	std::vector<uint16_t>& outIndices,
+	std::vector<Submesh>& outSubmeshes)
 {
+	const auto& transform = node->mTransformation;
+	auto nodeTransform = parentTransform * mat4_cast(transform);
+
 	for (auto i = 0; i < node->mNumMeshes; ++i)
 	{
 		const auto* mesh = scene->mMeshes[node->mMeshes[i]];
-		ProcessMesh(mesh, outVertices, outIndices, outSubmeshes);
+		ProcessMesh(mesh, nodeTransform, outVertices, outIndices, outSubmeshes);
 	}
 
 	for (auto i = 0; i < node->mNumChildren; ++i)
 	{
-		ProcessNode(node->mChildren[i], scene, outVertices, outIndices, outSubmeshes);
+		ProcessNode(node->mChildren[i], scene, nodeTransform, outVertices, outIndices, outSubmeshes);
 	}
 }
 
-void Mesh::ProcessMesh(const aiMesh* mesh, std::vector<Vertex>& outVertices, std::vector<uint16_t>& outIndices, std::vector<Submesh>& outSubmeshes)
+void Mesh::ProcessMesh(
+	const aiMesh* mesh, const glm::mat4& transform, std::vector<Vertex>& outVertices, std::vector<uint16_t>& outIndices, std::vector<Submesh>& outSubmeshes)
 {
 	outSubmeshes.emplace_back(Submesh{
 		.indexOffset = uint32_t(outIndices.size()),
@@ -96,6 +114,7 @@ void Mesh::ProcessMesh(const aiMesh* mesh, std::vector<Vertex>& outVertices, std
 		.vertexOffset = uint32_t(outVertices.size()),
 		.vertexCount = mesh->mNumVertices,
 		.materialIndex = mesh->mMaterialIndex,
+		.transform = transform,
 	});
 
 	for (auto i = 0; i < mesh->mNumVertices; ++i)

@@ -35,9 +35,17 @@ public:
 	auto GetMaterials() -> auto& { return m_materials; }
 
 private:
-	static void ProcessNode(
-		const aiNode* node, const aiScene* scene, std::vector<Vertex>& outVertices, std::vector<uint16_t>& outIndices, std::vector<Submesh>& outSubmeshes);
-	static void ProcessMesh(const aiMesh* mesh, std::vector<Vertex>& outVertices, std::vector<uint16_t>& outIndices, std::vector<Submesh>& outSubmeshes);
+	static void ProcessNode(const aiNode* node,
+		const aiScene* scene,
+		const glm::mat4& transform,
+		std::vector<Vertex>& outVertices,
+		std::vector<uint16_t>& outIndices,
+		std::vector<Submesh>& outSubmeshes);
+	static void ProcessMesh(const aiMesh* mesh,
+		const glm::mat4& transform,
+		std::vector<Vertex>& outVertices,
+		std::vector<uint16_t>& outIndices,
+		std::vector<Submesh>& outSubmeshes);
 
 	auto LoadMaterialTexture(const aiMaterial* material, aiTextureType textureType, const std::filesystem::path& rootDir) const -> std::shared_ptr<Texture>;
 
