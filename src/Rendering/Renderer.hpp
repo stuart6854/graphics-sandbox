@@ -2,7 +2,12 @@
 
 #include "Mesh.hpp"
 
+#include <VkMana/CommandBuffer.hpp>
 #include <VkMana/Context.hpp>
+#include <VkMana/Descriptors.hpp>
+#include <VkMana/Image.hpp>
+#include <VkMana/Pipeline.hpp>
+#include <VkMana/RenderPass.hpp>
 #include <VkMana/WSI.hpp>
 
 #include <glm/ext/matrix_float4x4.hpp>
@@ -34,6 +39,10 @@ private:
 	auto AddOrGetBindlessMaterial(Material* material) -> uint32_t;
 	auto AddOrGetMesh(Mesh* mesh) -> uint32_t;
 
+	bool SetupGBufferPass();
+
+	void ExecGBufferPass(VkMana::CommandBuffer& cmd, VkMana::DescriptorSet& bindlessSet);
+
 	void DrawRenderInstances(VkMana::CommandBuffer& cmd);
 
 private:
@@ -44,6 +53,16 @@ private:
 	std::unique_ptr<Texture> m_blackTexture = nullptr;
 
 	VkMana::ImageHandle m_depthTarget = nullptr;
+
+#pragma region G-Buffer
+	VkMana::ImageHandle m_positionGBufTarget = nullptr;
+	VkMana::ImageHandle m_normalGBufTarget = nullptr;
+	VkMana::ImageHandle m_albedoGBufTarget = nullptr;
+	VkMana::RenderPassInfo m_gBufRenderPass;
+
+	VkMana::PipelineHandle m_gBufPipeline = nullptr;
+
+#pragma endregion
 
 	VkMana::SetLayoutHandle m_bindlesSetLayout = nullptr;
 	VkMana::SetLayoutHandle m_sceneSetLayout = nullptr;
