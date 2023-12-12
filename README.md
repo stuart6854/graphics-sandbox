@@ -1,5 +1,7 @@
 # Graphics Sandbox
 
+<img src="images/sample.png" width="600">
+
 A sandbox I use to implement and preview various graphics programming techniques.
 Uses my Vulkan library [VkMana](https://github.com/stuart6854/VkMana) behind the scenes.
 
