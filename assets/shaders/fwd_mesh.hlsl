@@ -1,4 +1,9 @@
-#define SCENE_SPACE space0
+#define BINDLESS_SPACE space0
+#define SCENE_SPACE space1
+#define MATERIAL_SPACE space2
+
+Texture2D bindlessTextures[] : register(t0, BINDLESS_SPACE);
+SamplerState bindlessSamplers[] : register(s0, BINDLESS_SPACE);
 
 struct SceneUBO
 {
@@ -8,6 +13,17 @@ struct SceneUBO
 cbuffer Scene : register(b0, SCENE_SPACE)
 {
 	SceneUBO scene;
+};
+
+struct MaterialUBO
+{
+	float4 albedoColor;
+	uint albedoTexIndex;
+	uint normalTexIndex;
+};
+cbuffer Material : register(b0, MATERIAL_SPACE)
+{
+	MaterialUBO material[32];
 };
 
 struct VSInput
@@ -21,6 +37,7 @@ struct VSInput
 struct PushConsts
 {
 	float4x4 modelMatrix;
+	uint materialIndex;
 };
 [[vk::push_constant]] PushConsts consts;
 
@@ -76,7 +93,8 @@ PSOutput PSMain(PSInput input)
 	// output.Normal = float4(input.Normal, 1.0);
 
 	// output.Albedo = textureColor.Sample(samplerColor, input.UV);
-	output.FragColor = float4(1, 1, 1, 1);
+	// output.FragColor = float4(1, 1, 1, 1);
+	output.FragColor = bindlessTextures[material[consts.materialIndex].albedoTexIndex].Sample(bindlessSamplers[material[consts.materialIndex].albedoTexIndex], input.TexCoord);
 
 	return output;
 }

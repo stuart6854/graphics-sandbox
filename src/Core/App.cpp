@@ -27,7 +27,7 @@ void App::Run()
 		const auto viewMatrix = glm::lookAt(glm::vec3(0.0f, 1.0f, -5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0, 1, 0));
 		m_renderer->SetCamera(projMatrix, viewMatrix);
 
-		m_renderer->Submit(m_backpackMesh.get());
+		m_renderer->Submit(m_backpackMesh.get(), glm::rotate(glm::mat4(1.0f), glm::radians(140.0f), { 0, 1, 0 }));
 
 		m_renderer->Flush();
 	}

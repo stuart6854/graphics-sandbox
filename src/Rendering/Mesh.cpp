@@ -7,7 +7,7 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
-constexpr auto MESH_IMPORT_FLAGS = aiProcessPreset_TargetRealtime_Quality;
+constexpr auto MESH_IMPORT_FLAGS = aiProcessPreset_TargetRealtime_Quality | aiProcess_FlipUVs;
 
 Mesh::Mesh(VkMana::Context& ctx) : m_ctx(&ctx) {}
 
@@ -28,12 +28,23 @@ bool Mesh::LoadFromFile(const std::filesystem::path& filename)
 	std::vector<Vertex> vertices;
 	std::vector<uint16_t> indices;
 	std::vector<Submesh> submeshes;
+	std::vector<Material> materials;
 
 	ProcessNode(scene->mRootNode, scene, vertices, indices, submeshes);
+
+	for (auto i = 0; i < scene->mNumMaterials; ++i)
+	{
+		const auto* material = scene->mMaterials[i];
+
+		auto& newMaterial = materials.emplace_back();
+		newMaterial.albedo = LoadMaterialTexture(material, aiTextureType_DIFFUSE, rootDirectory);
+		newMaterial.normalMap = LoadMaterialTexture(material, aiTextureType_HEIGHT, rootDirectory);
+	}
 
 	SetVertices(vertices);
 	SetIndices(indices);
 	SetSubmeshes(submeshes);
+	SetMaterials(materials);
 
 	return true;
 }
@@ -129,4 +140,20 @@ void Mesh::ProcessMesh(const aiMesh* mesh, std::vector<Vertex>& outVertices, std
 		for (auto j = 0; j < face.mNumIndices; ++j)
 			outIndices.push_back(face.mIndices[j]);
 	}
+}
+
+auto Mesh::LoadMaterialTexture(const aiMaterial* material, aiTextureType textureType, const std::filesystem::path& rootDir) const -> std::shared_ptr<Texture>
+{
+	if (material->GetTextureCount(textureType) == 0)
+		return nullptr;
+
+	aiString str;
+	material->GetTexture(textureType, 0, &str);
+
+	const auto textureFilename = rootDir / str.C_Str();
+	auto texture = std::make_shared<Texture>(*m_ctx);
+	if (!texture->LoadFromFile(textureFilename))
+		return nullptr;
+
+	return texture;
 }
