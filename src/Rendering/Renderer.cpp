@@ -240,7 +240,6 @@ void Renderer::Flush()
 	// mainCmd->Draw(3, 0);
 
 	{
-
 		/* Scene Set */
 		auto sceneUbo = m_ctx.CreateBuffer(VkMana::BufferCreateInfo::Uniform(sizeof(SceneData)));
 		m_ctx.SetName(*sceneUbo, "ubo_scene");

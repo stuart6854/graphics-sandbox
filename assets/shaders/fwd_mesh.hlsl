@@ -20,6 +20,7 @@ struct MaterialUBO
 	float4 albedoColor;
 	uint albedoTexIndex;
 	uint normalTexIndex;
+	float2 padding;
 };
 cbuffer Material : register(b0, MATERIAL_SPACE)
 {

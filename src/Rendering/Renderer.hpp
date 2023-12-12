@@ -65,12 +65,15 @@ private:
 		glm::mat4 viewMatrix;
 	} m_sceneData{};
 
+#pragma pack(push, 4)
 	struct MaterialData
 	{
 		glm::vec4 albedoColor = { 1, 1, 1, 1 };
 		uint32_t albedoTexIndex = 0;
 		uint32_t normalTexIndex = 0;
+		float padding[2];
 	};
+#pragma pack(pop)
 	std::vector<MaterialData> m_bindlessMaterials;
 	std::unordered_map<Material*, uint32_t> m_bindlessMaterialsMap;
 
