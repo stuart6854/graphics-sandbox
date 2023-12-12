@@ -7,8 +7,8 @@
 #include <filesystem>
 #include <vector>
 
-#include <VKMana/Context.hpp>
 #include <VkMana/Buffer.hpp>
+#include <VkMana/Context.hpp>
 
 #include <assimp/scene.h>
 

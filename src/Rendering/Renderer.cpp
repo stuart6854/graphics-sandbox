@@ -2,7 +2,7 @@
 
 #include "Core/Logging.hpp"
 
-#include <VKMana/ShaderCompiler.hpp>
+#include <VkMana/ShaderCompiler.hpp>
 
 #include <glm/gtc/type_ptr.hpp>
 

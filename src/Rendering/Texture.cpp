@@ -24,7 +24,7 @@ bool Texture::LoadFromFile(const std::filesystem::path& filename)
 	}
 
 	const auto imageInfo = VkMana::ImageCreateInfo::Texture(w, h);
-	const VkMana::ImageDataSource dataSrc(uint32_t(w * h * c), pixels);
+	const VkMana::ImageDataSource dataSrc{ uint32_t(w * h * c), pixels };
 	m_image = m_ctx->CreateImage(imageInfo, &dataSrc);
 
 	return m_image != nullptr;
@@ -38,7 +38,7 @@ bool Texture::FromData(uint32_t width, uint32_t height, const void* data)
 		return false;
 
 	const auto imageInfo = VkMana::ImageCreateInfo::Texture(width, height);
-	const VkMana::ImageDataSource dataSrc(uint32_t(width * height * 4), data);
+	const VkMana::ImageDataSource dataSrc{ uint32_t(width * height * 4), data };
 	m_image = m_ctx->CreateImage(imageInfo, &dataSrc);
 
 	return m_image != nullptr;
