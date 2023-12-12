@@ -5,6 +5,7 @@
 #include "Vertex.hpp"
 
 #include <filesystem>
+#include <vector>
 
 #include <VKMana/Context.hpp>
 #include <VkMana/Buffer.hpp>

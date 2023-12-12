@@ -11,6 +11,7 @@ public:
 	~Texture() = default;
 
 	bool LoadFromFile(const std::filesystem::path& filename);
+	bool FromData(uint32_t width, uint32_t height, const void* data);
 
 	auto GetImage() -> auto& { return m_image; }
 	auto GetImage() const -> const auto& { return m_image; }

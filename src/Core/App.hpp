@@ -23,4 +23,5 @@ private:
 	std::unique_ptr<Renderer> m_renderer;
 
 	std::unique_ptr<Mesh> m_backpackMesh;
+	std::unique_ptr<Mesh> m_runestoneMesh;
 };

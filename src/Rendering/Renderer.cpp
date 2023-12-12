@@ -62,6 +62,20 @@ bool Renderer::Init(VkMana::WSI& window)
 	}
 
 	{
+		const auto imageInfo = VkMana::ImageCreateInfo::Texture(1, 1, false);
+
+		// White Texture
+		constexpr uint8_t whitePixels[] = { 255, 255, 255, 255 };
+		m_whiteTexture = std::make_unique<Texture>(m_ctx);
+		assert(m_whiteTexture->FromData(1, 1, whitePixels));
+
+		// White Texture
+		constexpr uint8_t blackPixels[] = { 0, 0, 0, 255 };
+		m_blackTexture = std::make_unique<Texture>(m_ctx);
+		assert(m_blackTexture->FromData(1, 1, blackPixels));
+	}
+
+	{
 		// Depth Target
 		const auto imageInfo = VkMana::ImageCreateInfo::DepthStencilTarget(window.GetSurfaceWidth(), window.GetSurfaceHeight(), false);
 		m_depthTarget = m_ctx.CreateImage(imageInfo);
@@ -286,8 +300,8 @@ auto Renderer::AddOrGetBindlessMaterial(Material* material) -> uint32_t
 	m_bindlessMaterialsMap[material] = index;
 
 	auto& materialData = m_bindlessMaterials.emplace_back();
-	materialData.albedoTexIndex = AddOrGetBindlessTexture(material->albedo.get());
-	materialData.normalTexIndex = AddOrGetBindlessTexture(material->normalMap.get());
+	materialData.albedoTexIndex = AddOrGetBindlessTexture(material->albedo ? material->albedo.get() : m_whiteTexture.get());
+	materialData.normalTexIndex = AddOrGetBindlessTexture(material->normalMap ? material->normalMap.get() : m_blackTexture.get());
 
 	return index;
 }

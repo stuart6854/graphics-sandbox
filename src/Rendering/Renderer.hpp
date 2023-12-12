@@ -40,6 +40,9 @@ private:
 	VkMana::WSI* m_window = nullptr;
 	VkMana::Context m_ctx{};
 
+	std::unique_ptr<Texture> m_whiteTexture = nullptr;
+	std::unique_ptr<Texture> m_blackTexture = nullptr;
+
 	VkMana::ImageHandle m_depthTarget = nullptr;
 
 	VkMana::SetLayoutHandle m_bindlesSetLayout = nullptr;

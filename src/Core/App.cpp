@@ -28,6 +28,7 @@ void App::Run()
 		m_renderer->SetCamera(projMatrix, viewMatrix);
 
 		m_renderer->Submit(m_backpackMesh.get(), glm::rotate(glm::mat4(1.0f), glm::radians(140.0f), { 0, 1, 0 }));
+		m_renderer->Submit(m_runestoneMesh.get());
 
 		m_renderer->Flush();
 	}
@@ -49,7 +50,12 @@ void App::Init()
 	}
 
 	m_backpackMesh = std::make_unique<Mesh>(m_renderer->GetContext());
-	if (!m_backpackMesh->LoadFromFile("assets/backpack/backpack.obj"))
+	if (!m_backpackMesh->LoadFromFile("assets/models/backpack/backpack.obj"))
+	{
+		LOG_ERR("Failed to load backpack model.");
+	}
+	m_runestoneMesh = std::make_unique<Mesh>(m_renderer->GetContext());
+	if (!m_runestoneMesh->LoadFromFile("assets/models/runestone/scene.gltf"))
 	{
 		LOG_ERR("Failed to load backpack model.");
 	}
