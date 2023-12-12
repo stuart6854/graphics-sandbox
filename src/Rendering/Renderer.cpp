@@ -60,6 +60,13 @@ bool Renderer::Init(VkMana::WSI& window)
 		LOG_ERR("Failed to init VkMana context");
 		return false;
 	}
+
+	{
+		// Depth Target
+		const auto imageInfo = VkMana::ImageCreateInfo::DepthStencilTarget(window.GetSurfaceWidth(), window.GetSurfaceHeight(), false);
+		m_depthTarget = m_ctx.CreateImage(imageInfo);
+	}
+
 	{
 		// Bindless set layout
 		std::vector bindings{
@@ -165,6 +172,7 @@ bool Renderer::Init(VkMana::WSI& window)
 			},
 			.Topology = vk::PrimitiveTopology::eTriangleList,
 			.ColorTargetFormats = { vk::Format::eB8G8R8A8Srgb },
+			.DepthTargetFormat = m_depthTarget->GetFormat(),
 			.Layout = pipelineLayout,
 		};
 		m_fwdMeshPipeline = m_ctx.CreateGraphicsPipeline(pipelineInfo);
@@ -209,7 +217,8 @@ void Renderer::Flush()
 
 	auto mainCmd = m_ctx.RequestCmd();
 
-	const auto rpInfo = m_ctx.GetSurfaceRenderPass(m_window);
+	auto rpInfo = m_ctx.GetSurfaceRenderPass(m_window);
+	rpInfo.Targets.push_back(VkMana::RenderPassTarget::DefaultDepthStencilTarget(m_depthTarget->GetImageView(VkMana::ImageViewType::RenderTarget)));
 	mainCmd->BeginRenderPass(rpInfo);
 	// mainCmd->BindPipeline(m_trianglePipeline.Get());
 	// mainCmd->SetViewport(0, 0, float(windowWidth), float(windowHeight));

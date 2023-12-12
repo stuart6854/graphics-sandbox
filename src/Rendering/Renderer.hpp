@@ -40,6 +40,8 @@ private:
 	VkMana::WSI* m_window = nullptr;
 	VkMana::Context m_ctx{};
 
+	VkMana::ImageHandle m_depthTarget = nullptr;
+
 	VkMana::SetLayoutHandle m_bindlesSetLayout = nullptr;
 	VkMana::SetLayoutHandle m_sceneSetLayout = nullptr;
 	VkMana::SetLayoutHandle m_materialSetLayout = nullptr;
