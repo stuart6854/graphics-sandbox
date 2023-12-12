@@ -23,12 +23,16 @@ void App::Run()
 
 		/* Render */
 		const auto windowAspect = float(m_window.GetSurfaceWidth()) / float(m_window.GetSurfaceHeight());
-		const auto projMatrix = glm::perspective(glm::radians(60.0f), windowAspect, 0.1f, 1000.0f);
-		const auto viewMatrix = glm::lookAt(glm::vec3(0.0f, 1.0f, -5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0, 1, 0));
+		const auto projMatrix = glm::perspectiveLH_ZO(glm::radians(60.0f), windowAspect, 0.1f, 1000.0f);
+		const auto viewMatrix = glm::lookAtLH(glm::vec3(-0.0f, 5.0f, -10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0, 1, 0));
 		m_renderer->SetCamera(projMatrix, viewMatrix);
 
-		m_renderer->Submit(m_backpackMesh.get(), glm::rotate(glm::mat4(1.0f), glm::radians(140.0f), { 0, 1, 0 }));
-		m_renderer->Submit(m_runestoneMesh.get());
+		auto backpackTransform = glm::translate(glm::mat4(1.0f), { -3.0f, 0, -2.0f }) * glm::scale(glm::mat4(1.0f), glm::vec3(0.05f))
+			* glm::rotate(glm::mat4(1.0f), glm::radians(210.0f), { 0, 1, 0 });
+		m_renderer->Submit(m_backpackMesh.get(), backpackTransform);
+
+		auto runestoneTransform = glm::translate(glm::mat4(1.0f), { 0, -5, 5 }) * glm::scale(glm::mat4(1.0f), glm::vec3(2.0f));
+		m_renderer->Submit(m_runestoneMesh.get(), runestoneTransform);
 
 		m_renderer->Flush();
 	}
@@ -50,7 +54,7 @@ void App::Init()
 	}
 
 	m_backpackMesh = std::make_unique<Mesh>(m_renderer->GetContext());
-	if (!m_backpackMesh->LoadFromFile("assets/models/backpack/backpack.obj"))
+	if (!m_backpackMesh->LoadFromFile("assets/models/backpack/scene.gltf"))
 	{
 		LOG_ERR("Failed to load backpack model.");
 	}
