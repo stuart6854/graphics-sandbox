@@ -7,52 +7,6 @@
 #include <VkMana/ShaderCompiler.hpp>
 
 #include <glm/gtc/type_ptr.hpp>
-#include <vulkan/vulkan_enums.hpp>
-
-const auto TriangleHLSLShader = R"(
-struct VSOutput
-{
-	float4 FragPos : SV_POSITION;
-	[[vk::location(0)]] float4 Color : COLOR0;
-};
-
-VSOutput VSMain(uint vtxId : SV_VERTEXID)
-{
-	const float3 positions[3] = {
-		float3(0.5, 0.5, 0.0),
-		float3(-0.5, 0.5, 0.0),
-		float3(0.0, -0.5, 0.0),
-	};
-
-	const float4 colors[3] = {
-		float4(1, 0, 0, 1),
-		float4(0, 1, 0, 1),
-		float4(0, 0, 1, 1),
-	};
-
-	VSOutput output;
-	output.FragPos = float4(positions[vtxId], 1.0);
-	output.Color = colors[vtxId];
-	return output;
-}
-
-struct PSInput
-{
-	[[vk::location(0)]] float4 Color : COLOR;
-};
-
-struct PSOutput
-{
-	float4 FragColor : SV_TARGET0;
-};
-
-PSOutput PSMain(PSInput input)
-{
-	PSOutput output;
-	output.FragColor = input.Color;
-	return output;
-}
-)";
 
 bool Renderer::Init(VkMana::WSI& window)
 {
@@ -112,94 +66,10 @@ bool Renderer::Init(VkMana::WSI& window)
 		LOG_ERR("Failed to init G-Buffer pass");
 		return false;
 	}
-
+	if (!SetupCompositePass())
 	{
-		// Triangle Pipeline
-		const VkMana::PipelineLayoutCreateInfo pipelineLayoutInfo{};
-		auto pipelineLayout = m_ctx.CreatePipelineLayout(pipelineLayoutInfo);
-
-		VkMana::ShaderCompileInfo compileInfo{
-			.SrcLanguage = VkMana::SourceLanguage::HLSL,
-			.SrcString = TriangleHLSLShader,
-			.Stage = vk::ShaderStageFlagBits::eVertex,
-			.EntryPoint = "VSMain",
-			.Debug = false,
-		};
-		const auto vertSpirvOpt = VkMana::CompileShader(compileInfo);
-		if (!vertSpirvOpt)
-		{
-			VM_ERR("Failed to compiler VERTEX shader.");
-			return false;
-		}
-
-		compileInfo.Stage = vk::ShaderStageFlagBits::eFragment;
-		compileInfo.EntryPoint = "PSMain";
-		const auto fragSpirvOpt = VkMana::CompileShader(compileInfo);
-		if (!fragSpirvOpt)
-		{
-			VM_ERR("Failed to compiler FRAGMENT shader.");
-			return false;
-		}
-
-		const VkMana::GraphicsPipelineCreateInfo pipelineInfo{
-			.Vertex = { vertSpirvOpt.value(), "VSMain" },
-			.Fragment = { fragSpirvOpt.value(), "PSMain" },
-			.Topology = vk::PrimitiveTopology::eTriangleList,
-			.ColorTargetFormats = { vk::Format::eB8G8R8A8Srgb },
-			.Layout = pipelineLayout,
-		};
-		m_trianglePipeline = m_ctx.CreateGraphicsPipeline(pipelineInfo);
-	}
-	{
-		// Foward-Mesh Pipeline
-
-		const VkMana::PipelineLayoutCreateInfo pipelineLayoutInfo{
-			.PushConstantRange = { vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0u, uint32_t(sizeof(glm::mat4) + sizeof(uint32_t)) },
-			.SetLayouts = { m_bindlesSetLayout.Get(), m_sceneSetLayout.Get(), m_materialSetLayout.Get(), },
-		};
-		auto pipelineLayout = m_ctx.CreatePipelineLayout(pipelineLayoutInfo);
-
-		VkMana::ShaderCompileInfo compileInfo{
-			.SrcLanguage = VkMana::SourceLanguage::HLSL,
-			.SrcFilename = "assets/shaders/fwd_mesh.hlsl",
-			.Stage = vk::ShaderStageFlagBits::eVertex,
-			.EntryPoint = "VSMain",
-			.Debug = false,
-		};
-		const auto vertSpirvOpt = VkMana::CompileShader(compileInfo);
-		if (!vertSpirvOpt)
-		{
-			VM_ERR("Failed to compiler VERTEX shader.");
-			return false;
-		}
-
-		compileInfo.Stage = vk::ShaderStageFlagBits::eFragment;
-		compileInfo.EntryPoint = "PSMain";
-		const auto fragSpirvOpt = VkMana::CompileShader(compileInfo);
-		if (!fragSpirvOpt)
-		{
-			VM_ERR("Failed to compiler FRAGMENT shader.");
-			return false;
-		}
-
-		const VkMana::GraphicsPipelineCreateInfo pipelineInfo{
-			.Vertex = { vertSpirvOpt.value(), "VSMain" },
-			.Fragment = { fragSpirvOpt.value(), "PSMain" },
-			.VertexAttributes = {
-				vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)),
-				vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)),
-				vk::VertexInputAttributeDescription(2, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal)),
-				vk::VertexInputAttributeDescription(3, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, tangent)),
-			},
-			.VertexBindings = {
-				vk::VertexInputBindingDescription(0, sizeof(Vertex), vk::VertexInputRate::eVertex),
-			},
-			.Topology = vk::PrimitiveTopology::eTriangleList,
-			.ColorTargetFormats = { vk::Format::eB8G8R8A8Srgb },
-			.DepthTargetFormat = m_depthTarget->GetFormat(),
-			.Layout = pipelineLayout,
-		};
-		m_fwdMeshPipeline = m_ctx.CreateGraphicsPipeline(pipelineInfo);
+		LOG_ERR("Failed to init Composite pass");
+		return false;
 	}
 
 	return true;
@@ -238,47 +108,11 @@ void Renderer::Flush()
 	auto bindlessSet = m_ctx.RequestDescriptorSet(m_bindlesSetLayout.Get());
 	m_ctx.SetName(*bindlessSet, "descriptor_set_bindless");
 	bindlessSet->WriteArray(0, 0, m_bindlessTextures, m_ctx.GetLinearSampler());
+
 	auto mainCmd = m_ctx.RequestCmd();
 
 	ExecGBufferPass(*mainCmd, *bindlessSet);
-
-	auto rpInfo = m_ctx.GetSurfaceRenderPass(m_window);
-	rpInfo.Targets.push_back(VkMana::RenderPassTarget::DefaultDepthStencilTarget(m_depthTarget->GetImageView(VkMana::ImageViewType::RenderTarget)));
-	mainCmd->BeginRenderPass(rpInfo);
-	// mainCmd->BindPipeline(m_trianglePipeline.Get());
-	// mainCmd->SetViewport(0, 0, float(windowWidth), float(windowHeight));
-	// mainCmd->SetScissor(0, 0, windowWidth, windowHeight);
-	// mainCmd->Draw(3, 0);
-
-	{
-		/* Scene Set */
-		auto sceneUbo = m_ctx.CreateBuffer(VkMana::BufferCreateInfo::Uniform(sizeof(SceneData)));
-		m_ctx.SetName(*sceneUbo, "ubo_scene");
-		sceneUbo->WriteHostAccessible(0, sizeof(SceneData), &m_sceneData);
-
-		auto sceneSet = m_ctx.RequestDescriptorSet(m_sceneSetLayout.Get());
-		m_ctx.SetName(*sceneSet, "descriptor_set_scene");
-		sceneSet->Write(sceneUbo.Get(), 0, vk::DescriptorType::eUniformBuffer, 0, sceneUbo->GetSize());
-
-		/* Materials Set */
-		auto materialUbo = m_ctx.CreateBuffer(VkMana::BufferCreateInfo::Uniform(sizeof(MaterialData) * m_bindlessMaterials.size()));
-		m_ctx.SetName(*materialUbo, "ubo_materials");
-		materialUbo->WriteHostAccessible(0, sizeof(MaterialData) * m_bindlessMaterials.size(), m_bindlessMaterials.data());
-
-		auto materialSet = m_ctx.RequestDescriptorSet(m_materialSetLayout.Get());
-		m_ctx.SetName(*materialSet, "descriptor_set_materials");
-		materialSet->Write(materialUbo.Get(), 0, vk::DescriptorType::eUniformBuffer, 0, materialUbo->GetSize());
-
-		mainCmd->BindPipeline(m_fwdMeshPipeline.Get());
-		mainCmd->SetViewport(0.0f, float(windowHeight), float(windowWidth), -float(windowHeight), 0.0f, 1.0f);
-		mainCmd->SetScissor(0, 0, windowWidth, windowHeight);
-
-		mainCmd->BindDescriptorSets(0, { bindlessSet.Get(), sceneSet.Get(), materialSet.Get() }, {});
-
-		DrawRenderInstances(*mainCmd);
-	}
-
-	mainCmd->EndRenderPass();
+	ExecCompositePass(*mainCmd);
 
 	m_ctx.Submit(mainCmd);
 
@@ -397,6 +231,55 @@ bool Renderer::SetupGBufferPass()
 	return true;
 }
 
+bool Renderer::SetupCompositePass()
+{
+	std::vector bindings{
+		VkMana::SetLayoutBinding(0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment),
+		VkMana::SetLayoutBinding(1, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment),
+		VkMana::SetLayoutBinding(2, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment),
+	};
+	m_gBufTargetSetLayout = m_ctx.CreateSetLayout(bindings);
+
+	const VkMana::PipelineLayoutCreateInfo pipelineLayoutInfo{
+		.SetLayouts = { m_gBufTargetSetLayout.Get(), },
+	};
+	auto pipelineLayout = m_ctx.CreatePipelineLayout(pipelineLayoutInfo);
+
+	VkMana::ShaderCompileInfo compileInfo{
+		.SrcLanguage = VkMana::SourceLanguage::HLSL,
+		.SrcFilename = "assets/shaders/deferred_composite.hlsl",
+		.Stage = vk::ShaderStageFlagBits::eVertex,
+		.EntryPoint = "VSMain",
+		.Debug = false,
+	};
+	const auto vertSpirvOpt = VkMana::CompileShader(compileInfo);
+	if (!vertSpirvOpt)
+	{
+		VM_ERR("Failed to compiler VERTEX shader.");
+		return false;
+	}
+
+	compileInfo.Stage = vk::ShaderStageFlagBits::eFragment;
+	compileInfo.EntryPoint = "PSMain";
+	const auto fragSpirvOpt = VkMana::CompileShader(compileInfo);
+	if (!fragSpirvOpt)
+	{
+		VM_ERR("Failed to compiler FRAGMENT shader.");
+		return false;
+	}
+
+	const VkMana::GraphicsPipelineCreateInfo pipelineInfo{
+		.Vertex = { vertSpirvOpt.value(), "VSMain" },
+		.Fragment = { fragSpirvOpt.value(), "PSMain" },
+		.Topology = vk::PrimitiveTopology::eTriangleList,
+		.ColorTargetFormats = { vk::Format::eB8G8R8A8Srgb },
+		.Layout = pipelineLayout,
+	};
+	m_compositePipeline = m_ctx.CreateGraphicsPipeline(pipelineInfo);
+
+	return true;
+}
+
 void Renderer::ExecGBufferPass(VkMana::CommandBuffer& cmd, VkMana::DescriptorSet& bindlessSet)
 {
 	const auto windowWidth = m_window->GetSurfaceWidth();
@@ -429,6 +312,31 @@ void Renderer::ExecGBufferPass(VkMana::CommandBuffer& cmd, VkMana::DescriptorSet
 	cmd.BindDescriptorSets(0, { &bindlessSet, sceneSet.Get(), materialSet.Get() }, {});
 
 	DrawRenderInstances(cmd);
+
+	cmd.EndRenderPass();
+}
+
+void Renderer::ExecCompositePass(VkMana::CommandBuffer& cmd)
+{
+	const auto windowWidth = m_window->GetSurfaceWidth();
+	const auto windowHeight = m_window->GetSurfaceHeight();
+
+	auto gBufSet = m_ctx.RequestDescriptorSet(m_gBufTargetSetLayout.Get());
+	m_ctx.SetName(*gBufSet, "descriptor_set_gbuffer");
+	gBufSet->Write(m_positionGBufTarget->GetImageView(VkMana::ImageViewType::RenderTarget), m_ctx.GetLinearSampler(), 0);
+	gBufSet->Write(m_normalGBufTarget->GetImageView(VkMana::ImageViewType::RenderTarget), m_ctx.GetLinearSampler(), 1);
+	gBufSet->Write(m_albedoGBufTarget->GetImageView(VkMana::ImageViewType::RenderTarget), m_ctx.GetLinearSampler(), 2);
+
+	auto rpInfo = m_ctx.GetSurfaceRenderPass(m_window);
+	cmd.BeginRenderPass(rpInfo);
+
+	cmd.BindPipeline(m_compositePipeline.Get());
+	cmd.SetViewport(0.0f, 0.0f, float(windowWidth), float(windowHeight), 0.0f, 1.0f);
+	cmd.SetScissor(0, 0, windowWidth, windowHeight);
+
+	cmd.BindDescriptorSets(0, { gBufSet.Get() }, {});
+
+	cmd.Draw(3, 0);
 
 	cmd.EndRenderPass();
 }

@@ -40,8 +40,10 @@ private:
 	auto AddOrGetMesh(Mesh* mesh) -> uint32_t;
 
 	bool SetupGBufferPass();
+	bool SetupCompositePass();
 
 	void ExecGBufferPass(VkMana::CommandBuffer& cmd, VkMana::DescriptorSet& bindlessSet);
+	void ExecCompositePass(VkMana::CommandBuffer& cmd);
 
 	void DrawRenderInstances(VkMana::CommandBuffer& cmd);
 
@@ -61,15 +63,16 @@ private:
 	VkMana::RenderPassInfo m_gBufRenderPass;
 
 	VkMana::PipelineHandle m_gBufPipeline = nullptr;
+#pragma endregion
 
+#pragma region Composite
+	VkMana::SetLayoutHandle m_gBufTargetSetLayout = nullptr;
+	VkMana::PipelineHandle m_compositePipeline = nullptr;
 #pragma endregion
 
 	VkMana::SetLayoutHandle m_bindlesSetLayout = nullptr;
 	VkMana::SetLayoutHandle m_sceneSetLayout = nullptr;
 	VkMana::SetLayoutHandle m_materialSetLayout = nullptr;
-
-	VkMana::PipelineHandle m_trianglePipeline = nullptr;
-	VkMana::PipelineHandle m_fwdMeshPipeline = nullptr; // Forward-Mesh
 
 	//////////////////////////////////////////////////
 	/// Frame Data
