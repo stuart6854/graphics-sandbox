@@ -7,9 +7,10 @@ Uses my Vulkan library [VkMana](https://github.com/stuart6854/VkMana) behind the
 
 ## Features
 
+- Deferred Rendering
+
 ## Planned
 
-- Deferred Rendering
 - Lighting - Directional, Spot, Area
 - Shadows Mapping
   - Cascaded
