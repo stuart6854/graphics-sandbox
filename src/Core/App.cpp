@@ -21,12 +21,18 @@ void App::Run()
 			break;
 		}
 
-		/* Render */
+#pragma region Scene Camera
 		const auto windowAspect = float(m_window.GetSurfaceWidth()) / float(m_window.GetSurfaceHeight());
 		const auto projMatrix = glm::perspectiveLH_ZO(glm::radians(60.0f), windowAspect, 0.1f, 1000.0f);
 		const auto viewMatrix = glm::lookAtLH(glm::vec3(-0.0f, 5.0f, -10.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0, 1, 0));
 		m_renderer->SetCamera(projMatrix, viewMatrix);
+#pragma endregion
 
+#pragma region Scene Lighting
+		m_renderer->SetAmbientLight({ 1, 1, 1 }, 0.1f);
+#pragma endregion
+
+#pragma region Scene Submission
 		auto backpackTransform = glm::translate(glm::mat4(1.0f), { -3.0f, 0, -2.0f }) * glm::scale(glm::mat4(1.0f), glm::vec3(0.05f))
 			* glm::rotate(glm::mat4(1.0f), glm::radians(210.0f), { 0, 1, 0 });
 		m_renderer->Submit(m_backpackMesh.get(), backpackTransform);
@@ -35,6 +41,7 @@ void App::Run()
 		m_renderer->Submit(m_runestoneMesh.get(), runestoneTransform);
 
 		m_renderer->Flush();
+#pragma endregion
 	}
 }
 

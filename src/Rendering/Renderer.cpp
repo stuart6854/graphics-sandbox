@@ -2,6 +2,7 @@
 
 #include "Core/Logging.hpp"
 
+#include <VkMana/Buffer.hpp>
 #include <VkMana/Image.hpp>
 #include <VkMana/RenderPass.hpp>
 #include <VkMana/ShaderCompiler.hpp>
@@ -51,7 +52,7 @@ bool Renderer::Init(VkMana::WSI& window)
 		std::vector bindings{
 			VkMana::SetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex),
 		};
-		m_sceneSetLayout = m_ctx.CreateSetLayout(bindings);
+		m_cameraSetLayout = m_ctx.CreateSetLayout(bindings);
 	}
 	{
 		// Material set layout
@@ -77,8 +78,13 @@ bool Renderer::Init(VkMana::WSI& window)
 
 void Renderer::SetCamera(const glm::mat4& projMatrix, const glm::mat4& viewMatrix)
 {
-	m_sceneData.projMatrix = projMatrix;
-	m_sceneData.viewMatrix = viewMatrix;
+	m_cameraData.projMatrix = projMatrix;
+	m_cameraData.viewMatrix = viewMatrix;
+}
+
+void Renderer::SetAmbientLight(const glm::vec3& color, float intensity)
+{
+	m_lightingData.ambientLight = glm::vec4(color, intensity);
 }
 
 void Renderer::Submit(Mesh* mesh, const glm::mat4& transform)
@@ -181,9 +187,9 @@ bool Renderer::SetupGBufferPass()
 	};
 
 	const VkMana::PipelineLayoutCreateInfo pipelineLayoutInfo{
-			.PushConstantRange = { vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0u, uint32_t(sizeof(glm::mat4) + sizeof(uint32_t)) },
-			.SetLayouts = { m_bindlesSetLayout.Get(), m_sceneSetLayout.Get(), m_materialSetLayout.Get(), },
-		};
+		.PushConstantRange = { vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0u, uint32_t(sizeof(glm::mat4) + sizeof(uint32_t)) },
+		.SetLayouts = { m_bindlesSetLayout.Get(), m_cameraSetLayout.Get(), m_materialSetLayout.Get(), },
+	};
 	auto pipelineLayout = m_ctx.CreatePipelineLayout(pipelineLayoutInfo);
 
 	VkMana::ShaderCompileInfo compileInfo{
@@ -240,8 +246,13 @@ bool Renderer::SetupCompositePass()
 	};
 	m_gBufTargetSetLayout = m_ctx.CreateSetLayout(bindings);
 
+	bindings = {
+		VkMana::SetLayoutBinding(0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment),
+	};
+	m_lightingSetLayout = m_ctx.CreateSetLayout(bindings);
+
 	const VkMana::PipelineLayoutCreateInfo pipelineLayoutInfo{
-		.SetLayouts = { m_gBufTargetSetLayout.Get(), },
+		.SetLayouts = {m_gBufTargetSetLayout.Get(), m_lightingSetLayout.Get()},
 	};
 	auto pipelineLayout = m_ctx.CreatePipelineLayout(pipelineLayoutInfo);
 
@@ -285,14 +296,14 @@ void Renderer::ExecGBufferPass(VkMana::CommandBuffer& cmd, VkMana::DescriptorSet
 	const auto windowWidth = m_window->GetSurfaceWidth();
 	const auto windowHeight = m_window->GetSurfaceHeight();
 
-	/* Scene Set */
-	auto sceneUbo = m_ctx.CreateBuffer(VkMana::BufferCreateInfo::Uniform(sizeof(SceneData)));
-	m_ctx.SetName(*sceneUbo, "ubo_scene");
-	sceneUbo->WriteHostAccessible(0, sizeof(SceneData), &m_sceneData);
+	/* Camera Set */
+	auto cameraUbo = m_ctx.CreateBuffer(VkMana::BufferCreateInfo::Uniform(sizeof(CameraData)));
+	m_ctx.SetName(*cameraUbo, "ubo_camera");
+	cameraUbo->WriteHostAccessible(0, sizeof(CameraData), &m_cameraData);
 
-	auto sceneSet = m_ctx.RequestDescriptorSet(m_sceneSetLayout.Get());
-	m_ctx.SetName(*sceneSet, "descriptor_set_scene");
-	sceneSet->Write(sceneUbo.Get(), 0, vk::DescriptorType::eUniformBuffer, 0, sceneUbo->GetSize());
+	auto cameraSet = m_ctx.RequestDescriptorSet(m_cameraSetLayout.Get());
+	m_ctx.SetName(*cameraSet, "descriptor_set_camera");
+	cameraSet->Write(cameraUbo.Get(), 0, vk::DescriptorType::eUniformBuffer, 0, cameraUbo->GetSize());
 
 	/* Materials Set */
 	auto materialUbo = m_ctx.CreateBuffer(VkMana::BufferCreateInfo::Uniform(sizeof(MaterialData) * m_bindlessMaterials.size()));
@@ -309,7 +320,7 @@ void Renderer::ExecGBufferPass(VkMana::CommandBuffer& cmd, VkMana::DescriptorSet
 	cmd.SetViewport(0.0f, float(windowHeight), float(windowWidth), -float(windowHeight), 0.0f, 1.0f);
 	cmd.SetScissor(0, 0, windowWidth, windowHeight);
 
-	cmd.BindDescriptorSets(0, { &bindlessSet, sceneSet.Get(), materialSet.Get() }, {});
+	cmd.BindDescriptorSets(0, { &bindlessSet, cameraSet.Get(), materialSet.Get() }, {});
 
 	DrawRenderInstances(cmd);
 
@@ -327,6 +338,15 @@ void Renderer::ExecCompositePass(VkMana::CommandBuffer& cmd)
 	gBufSet->Write(m_normalGBufTarget->GetImageView(VkMana::ImageViewType::RenderTarget), m_ctx.GetLinearSampler(), 1);
 	gBufSet->Write(m_albedoGBufTarget->GetImageView(VkMana::ImageViewType::RenderTarget), m_ctx.GetLinearSampler(), 2);
 
+	const auto lightingBufInfo = VkMana::BufferCreateInfo::Uniform(sizeof(LightingData));
+	const VkMana::BufferDataSource lightingDataSrc{ lightingBufInfo.Size, &m_lightingData };
+	auto lightingUBO = m_ctx.CreateBuffer(lightingBufInfo, &lightingDataSrc);
+	m_ctx.SetName(*lightingUBO, "ubo_lighting");
+
+	auto lightingSet = m_ctx.RequestDescriptorSet(m_lightingSetLayout.Get());
+	m_ctx.SetName(*lightingSet, "descriptor_set_lighting");
+	lightingSet->Write(lightingUBO.Get(), 0, vk::DescriptorType::eUniformBuffer, 0, lightingUBO->GetSize());
+
 	auto rpInfo = m_ctx.GetSurfaceRenderPass(m_window);
 	cmd.BeginRenderPass(rpInfo);
 
@@ -334,7 +354,7 @@ void Renderer::ExecCompositePass(VkMana::CommandBuffer& cmd)
 	cmd.SetViewport(0.0f, 0.0f, float(windowWidth), float(windowHeight), 0.0f, 1.0f);
 	cmd.SetScissor(0, 0, windowWidth, windowHeight);
 
-	cmd.BindDescriptorSets(0, { gBufSet.Get() }, {});
+	cmd.BindDescriptorSets(0, { gBufSet.Get(), lightingSet.Get() }, {});
 
 	cmd.Draw(3, 0);
 

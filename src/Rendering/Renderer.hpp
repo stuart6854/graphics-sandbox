@@ -12,6 +12,7 @@
 
 #include <glm/ext/matrix_float4x4.hpp>
 
+#include <array>
 #include <unordered_map>
 #include <vector>
 
@@ -24,6 +25,7 @@ public:
 	bool Init(VkMana::WSI& window);
 
 	void SetCamera(const glm::mat4& projMatrix, const glm::mat4& viewMatrix);
+	void SetAmbientLight(const glm::vec3& color = { 1, 1, 1 }, float intensity = 0.1f);
 	void Submit(Mesh* mesh, const glm::mat4& transform = glm::mat4(1.0f));
 
 	void Flush();
@@ -56,6 +58,10 @@ private:
 
 	VkMana::ImageHandle m_depthTarget = nullptr;
 
+	VkMana::SetLayoutHandle m_bindlesSetLayout = nullptr;
+	VkMana::SetLayoutHandle m_cameraSetLayout = nullptr;
+	VkMana::SetLayoutHandle m_materialSetLayout = nullptr;
+
 #pragma region G-Buffer
 	VkMana::ImageHandle m_positionGBufTarget = nullptr;
 	VkMana::ImageHandle m_normalGBufTarget = nullptr;
@@ -67,12 +73,9 @@ private:
 
 #pragma region Composite
 	VkMana::SetLayoutHandle m_gBufTargetSetLayout = nullptr;
+	VkMana::SetLayoutHandle m_lightingSetLayout = nullptr;
 	VkMana::PipelineHandle m_compositePipeline = nullptr;
 #pragma endregion
-
-	VkMana::SetLayoutHandle m_bindlesSetLayout = nullptr;
-	VkMana::SetLayoutHandle m_sceneSetLayout = nullptr;
-	VkMana::SetLayoutHandle m_materialSetLayout = nullptr;
 
 	//////////////////////////////////////////////////
 	/// Frame Data
@@ -81,11 +84,11 @@ private:
 	std::vector<const VkMana::ImageView*> m_bindlessTextures;
 	std::unordered_map<Texture*, uint32_t> m_bindlessTexturesMap;
 
-	struct SceneData
+	struct CameraData
 	{
 		glm::mat4 projMatrix;
 		glm::mat4 viewMatrix;
-	} m_sceneData{};
+	} m_cameraData{};
 
 #pragma pack(push, 4)
 	struct MaterialData
@@ -96,6 +99,7 @@ private:
 		float padding[2];
 	};
 #pragma pack(pop)
+
 	std::vector<MaterialData> m_bindlessMaterials;
 	std::unordered_map<Material*, uint32_t> m_bindlessMaterialsMap;
 
@@ -110,4 +114,18 @@ private:
 		glm::mat4 transform;
 	};
 	std::vector<RenderInstance> m_renderInstances;
+
+#pragma pack(push, 4)
+	struct Light
+	{
+		glm::vec3 position{};
+		uint32_t type = 0;			   // 0=Directional
+		glm::vec4 color{ 1, 1, 1, 0 }; // XYZ=Color, W=Intensity
+	};
+	struct LightingData
+	{
+		glm::vec4 ambientLight = { 1, 1, 1, 0.1 }; // XYZ=Color, W=Strength
+		std::array<Light, 16> lights{};
+	} m_lightingData{};
+#pragma pack(pop)
 };
