@@ -23,7 +23,7 @@ struct VSInput {
   [[vk::location(0)]] float3 Position : POSITION0;
   [[vk::location(1)]] float2 TexCoord : TEXCOORD0;
   [[vk::location(2)]] float3 Normal : NORMAL0;
-  [[vk::location(3)]] float3 Tangent : TANGENT0;
+  [[vk::location(3)]] float3 Tangent : TEXCOORD1;
 };
 
 struct PushConsts {
@@ -37,7 +37,7 @@ struct VSOutput {
   [[vk::location(0)]] float3 WorldPos : POSITION0;
   [[vk::location(1)]] float2 TexCoord : TEXCOORD0;
   [[vk::location(2)]] float3 Normal : NORMAL0;
-  [[vk::location(3)]] float3 Tangent : TANGENT0;
+  [[vk::location(3)]] float3 Tangent : TEXCOORD1;
 };
 
 VSOutput VSMain(VSInput input) {
@@ -50,9 +50,12 @@ VSOutput VSMain(VSInput input) {
 
   output.WorldPos =
       mul(consts.modelMatrix, float4(input.Position.xyz, 1.0)).xyz;
+
   output.TexCoord = input.TexCoord;
-  output.Normal = normalize(input.Normal);
-  output.Tangent = normalize(input.Tangent);
+
+  float3x3 m3Model = consts.modelMatrix;
+  output.Normal = normalize(mul(m3Model, input.Normal));
+  output.Tangent = normalize(mul(m3Model, input.Tangent));
   return output;
 }
 
@@ -60,7 +63,7 @@ struct PSInput {
   [[vk::location(0)]] float3 WorldPos : POSITION0;
   [[vk::location(1)]] float2 TexCoord : TEXCOORD0;
   [[vk::location(2)]] float3 Normal : NORMAL0;
-  [[vk::location(3)]] float3 Tangent : TANGENT0;
+  [[vk::location(3)]] float3 Tangent : TEXCOORD1;
 };
 
 struct PSOutput {
@@ -80,15 +83,16 @@ PSOutput PSMain(PSInput input) {
               bindlessSamplers[material[consts.materialIndex].normalTexIndex],
               input.TexCoord)
           .xyz;
+  sampledNormal = sampledNormal * 2.0 - 1.0;
+
   // Calculate normal in tangent space
-  float3 N = normalize(input.Normal);
-  float3 T = normalize(input.Tangent);
-  float3 B = cross(N, T);
-  float3x3 TBN = float3x3(T, B, N);
-  float3 tnorm =
-      mul(normalize(sampledNormal * 2.0 - float3(1.0, 1.0, 1.0)), TBN);
+  float3 Normal = normalize(input.Normal);
+  float3 Tangent = normalize(input.Tangent);
+  // Tangent = Tangent - mul(dot(Tangent, Normal), Normal); // Gram–Schmidt
+  float3 Bitangent = cross(Normal, Tangent);
+  float3x3 TBN = float3x3(Tangent, Bitangent, Normal);
+  float3 tnorm = mul(TBN, sampledNormal);
   output.Normal = float4(tnorm, 1.0);
-  //   output.Normal = float4(input.Normal, 1.0);
 
   output.Albedo =
       bindlessTextures[material[consts.materialIndex].albedoTexIndex].Sample(

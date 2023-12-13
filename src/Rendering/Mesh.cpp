@@ -4,6 +4,7 @@
 #include "Vertex.hpp"
 
 #include <assimp/Importer.hpp>
+#include <assimp/material.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 
@@ -49,6 +50,10 @@ bool Mesh::LoadFromFile(const std::filesystem::path& filename)
 		auto& newMaterial = materials.emplace_back();
 		newMaterial.albedo = LoadMaterialTexture(material, aiTextureType_DIFFUSE, rootDirectory);
 		newMaterial.normalMap = LoadMaterialTexture(material, aiTextureType_HEIGHT, rootDirectory);
+		if (newMaterial.normalMap == nullptr)
+			newMaterial.normalMap = LoadMaterialTexture(material, aiTextureType_NORMALS, rootDirectory);
+		if (newMaterial.normalMap == nullptr)
+			newMaterial.normalMap = LoadMaterialTexture(material, aiTextureType_NORMAL_CAMERA, rootDirectory);
 	}
 
 	SetVertices(vertices);

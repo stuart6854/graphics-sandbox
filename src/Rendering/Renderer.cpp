@@ -9,6 +9,8 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+constexpr auto LIGHT_TYPE_DIRECTIONAL = 1.0f;
+
 bool Renderer::Init(VkMana::WSI& window)
 {
 	m_window = &window;
@@ -82,9 +84,19 @@ void Renderer::SetCamera(const glm::mat4& projMatrix, const glm::mat4& viewMatri
 	m_cameraData.viewMatrix = viewMatrix;
 }
 
-void Renderer::SetAmbientLight(const glm::vec3& color, float intensity)
+void Renderer::SubmitAmbientLight(const glm::vec3& color, float intensity)
 {
 	m_lightingData.ambientLight = glm::vec4(color, intensity);
+}
+
+void Renderer::SubmitDirectionalLight(const glm::vec3& position, const glm::vec3& direction, const glm::vec3& color, float intensity)
+{
+	m_lightingData.lights.at(m_lightCount) = {
+		.position = { position, LIGHT_TYPE_DIRECTIONAL},
+		.direction = {direction,					  1},
+		.color = {	   color,			  intensity},
+	};
+	++m_lightCount;
 }
 
 void Renderer::Submit(Mesh* mesh, const glm::mat4& transform)
@@ -125,6 +137,7 @@ void Renderer::Flush()
 	m_ctx.EndFrame();
 	m_ctx.Present();
 
+	m_lightCount = 0;
 	m_renderInstances.clear();
 }
 

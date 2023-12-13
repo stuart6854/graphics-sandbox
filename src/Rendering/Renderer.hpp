@@ -25,7 +25,8 @@ public:
 	bool Init(VkMana::WSI& window);
 
 	void SetCamera(const glm::mat4& projMatrix, const glm::mat4& viewMatrix);
-	void SetAmbientLight(const glm::vec3& color = { 1, 1, 1 }, float intensity = 0.1f);
+	void SubmitAmbientLight(const glm::vec3& color = { 1, 1, 1 }, float intensity = 0.1f);
+	void SubmitDirectionalLight(const glm::vec3& position, const glm::vec3& direction, const glm::vec3& color, float intensity = 1.0);
 	void Submit(Mesh* mesh, const glm::mat4& transform = glm::mat4(1.0f));
 
 	void Flush();
@@ -118,8 +119,8 @@ private:
 #pragma pack(push, 4)
 	struct Light
 	{
-		glm::vec3 position{};
-		uint32_t type = 0;			   // 0=Directional
+		glm::vec4 position{};
+		glm::vec4 direction{};
 		glm::vec4 color{ 1, 1, 1, 0 }; // XYZ=Color, W=Intensity
 	};
 	struct LightingData
@@ -128,4 +129,5 @@ private:
 		std::array<Light, 16> lights{};
 	} m_lightingData{};
 #pragma pack(pop)
+	uint32_t m_lightCount = 0;
 };

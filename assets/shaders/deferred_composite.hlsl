@@ -27,8 +27,8 @@ Texture2D albedoTexture : register(t2, GBUFFER_SPACE);
 SamplerState albedoSampler : register(s2, GBUFFER_SPACE);
 
 struct Light {
-  float3 position;
-  uint type;    // 0=Directional
+  float4 position;
+  float4 direction;
   float4 color; // XYZ=Color, W=Intensity
 };
 struct LightingUBO {
@@ -45,6 +45,18 @@ struct PSOutput {
   float4 FragColor : SV_TARGET0;
 };
 
+float3 CalculateDirLight(float3 normal, float3 albedo, float3 direction,
+                         float3 color, float intensity) {
+  float3 lightColor = color.rgb * intensity;
+  float3 lightDir = normalize(direction);
+
+  // Diffuse
+  float3 norm = normalize(normal);
+  float3 diff = max(dot(norm, lightDir), 0.0);
+
+  return lightColor * diff * albedo.rgb;
+}
+
 PSOutput PSMain(PSInput input) {
   PSOutput output;
 
@@ -55,25 +67,14 @@ PSOutput PSMain(PSInput input) {
   float3 fragColor =
       albedo.rgb * (lighting.ambientLight.rgb * lighting.ambientLight.a);
 
-  // For each light
   for (uint i = 0; i < MAX_LIGHTS; ++i) {
-    float3 lightColor =
-        lighting.lights[i].color.rgb * lighting.lights[i].color.a;
+    float3 lightColor = float3(0, 0, 0);
+    if (lighting.lights[i].position.w == 1.0)
+      lightColor += CalculateDirLight(
+          normal, albedo.rgb, lighting.lights[i].direction.xyz,
+          lighting.lights[i].color.rgb, lighting.lights[i].color.a);
 
-    // Vector to light
-    float3 L = normalize(lighting.lights[i].position.xyz - fragPos);
-    // Distance from light to fragment position
-    float dist = length(L);
-
-    // Attentuation
-    // float atten = lighting.lights[i].Radius / (pow(dist, 2.0) + 1.0);
-
-    // Diffuse part
-    float3 N = normalize(normal);
-    float NdotL = max(0.0, dot(N, L));
-    float3 diff = lightColor * albedo.rgb * NdotL; // * atten;
-
-    fragColor += diff;
+    fragColor += lightColor;
   }
 
   output.FragColor = float4(fragColor, 1.0);
